@@ -123,14 +123,13 @@ const char* json_get_error(json_t* json);
 #define CALL(ret_addr,call_addr) do{{enum json__label ret=ret_addr; json->lc=call_addr;json__push(json,&ret,sizeof(enum json__label));}goto jp;case ret_addr:;}while(0)
 #define RET() do{json->lc=*(enum json__label*)json__pop(json, sizeof(enum json__label));goto jp;}while(0);
 #define TOK(addr,tok) do{json->lc=addr;return tok;case addr:;}while(0)
-#define NEXTCH() do{if(!json__nextch(json)) JMP(json__error_loop);}while(0)
 
 enum json__label {
 	json__start, json__error, json__error_loop, json__padding, json__object, json__array, json__array_l1, json__array_l2, json__object_l1,
 	json__object_l2, json__string, json__element, json__null, json__true, json__false, json__number, json__number_l1, json__number_l2,
 	json__c1, json__c2, json__c3, json__c4, json__c5, json__c6, json__c7, json__c8, json__c9, json__c10, json__c11, json__c12, json__c13, json__c14,
-	json__c15, json__c16, json__c17, json__t1, json__t2, json__t3, json__t4, json__t5, json__t6, json__t7, json__t8, json__t9, json__t10, json__t11,
-	json__t12, json__t13, json__t14
+	json__c15, json__c16, json__c17, json__c18, json__t1, json__t2, json__t3, json__t4, json__t5, json__t6, json__t7, json__t8, json__t9, json__t10,
+	json__t11, json__t12, json__t13, json__t14
 };
 
 enum json__number_type {
@@ -225,38 +224,18 @@ static int json__strncmp(const char* a, const char* b, size_t n)
 	else return (*(uint8_t*)a - *(uint8_t*)b);
 }
 
-static int json__nextch(json_t* json)
+static int json__getc(json_t* json)
 {
-	int c = JSON_FGETC(json->fp);
-
-	if (c == EOF) {
-		uint8_t postfix = 'e';
-		if (feof(json->fp)) {
-			json__push(json, json__error_unexpected_end_of_file, sizeof(json__error_unexpected_end_of_file));
-			int len = (int)sizeof(json__error_unexpected_end_of_file);
-			json__push(json, &len, sizeof(int));
-			json__push(json, &postfix, sizeof(uint8_t));
-		}
-		else {
-			size_t sc = json->sc;
-			json__push(json, json__error_while_reading_file, sizeof(json__error_while_reading_file));
-			int len = (int)sizeof(json__error_while_reading_file);
-			json__push(json, &len, sizeof(int));
-			json__push(json, &postfix, sizeof(uint8_t));
-		}
-		return 0;
-		}
-	else {
-		if (c == '\n') {
-			json->row++;
-			json->col = 1;
-		}
-		else {
-			json->col++;
-		}
+	int ch = fgetc(json->fp);
+	if (ch == '\n') {
+		json->row++;
+		json->col = 1;
 	}
-	json->ch = c;
-	return 1;
+	else {
+		json->col++;
+	}
+	json->ch = ch;
+	return ch != EOF;
 }
 
 int json__hex_to_int(int ch)
@@ -334,20 +313,27 @@ json_t* json_fopen(const char* filename)
 
 json_token_t json_next_token(json_t* json)
 {
-jp: switch(json->lc) {
+jp: switch (json->lc) {
 	LABEL(json__start);
-	NEXTCH();
-	if (json->ch == 0xEF) for (int i = 0; i < 3; i++) NEXTCH(); // Ignore BOM
+	if (!json__getc(json)) JMP(json__error);
+	if (json->ch == 0xEF) for (int i = 0; i < 3; i++) { // Ignore BOM
+		if(!json__getc(json)) JMP(json__error);
+	}
 	json->col = 1;
 	json->level = 1;
 	CALL(json__c1, json__padding);
 	if (json->ch == '{') CALL(json__c2, json__object);
 	else if (json->ch == '[') CALL(json__c3, json__array);
 	else JMP(json__error);
+	json__getc(json);
+	CALL(json__c18, json__padding);
+	if (!feof(json->fp)) JMP(json__error);
 	for (;;) TOK(json__t1, JSON_END_DOCUMENT);
 
 	LABEL(json__padding);
-	while (json->ch == ' ' || json->ch == '\r' || json->ch == '\n' || json->ch == '\t' || json->ch == '\f') NEXTCH();
+	while (json->ch == ' ' || json->ch == '\r' || json->ch == '\n' || json->ch == '\t' || json->ch == '\f') {
+		json__getc(json);
+	}
 	RET();
 
 	LABEL(json__element);
@@ -368,7 +354,7 @@ jp: switch(json->lc) {
 		json->number_type = JSON__NUMBER_INT64;
 		json->ra = json->sc;
 		uint8_t ch = '-'; json__push(json, &ch, sizeof(uint8_t));
-		NEXTCH();
+		json__getc(json);
 		if (json->ch >= '0' && json->ch <= '9') JMP(json__number);
 		JMP(json__error);
 	}
@@ -381,7 +367,7 @@ jp: switch(json->lc) {
 		json->number_type = JSON__NUMBER_INT64;
 		json->ra = json->sc;
 		uint8_t ch = '0'; json__push(json, &ch, sizeof(uint8_t));
-		NEXTCH();
+		json__getc(json);
 		if (json->ch == '.') JMP(json__number_l1);
 		JMP(json__number_l2);
 	}
@@ -398,13 +384,13 @@ jp: switch(json->lc) {
 	LABEL(json__object);
 	if (json->level > MAX_NESTING_LEVEL) JMP(json__error);
 	TOK(json__t2, JSON_START_OBJECT);
-	NEXTCH();
+	json__getc(json);
 	CALL(json__c5, json__padding);
 	LABEL(json__object_l1);
 	switch (json->ch) {
-		case '\"': break;
-		case '}': JMP(json__object_l2);
-		default: JMP(json__error);
+	case '\"': break;
+	case '}': JMP(json__object_l2);
+	default: JMP(json__error);
 	}
 	{
 		int sc = json->sc;
@@ -420,12 +406,12 @@ jp: switch(json->lc) {
 	}
 	CALL(json__c7, json__padding);
 	if (json->ch != ':') JMP(json__error);
-	NEXTCH();
+	json__getc(json);
 	CALL(json__c8, json__padding);
 	CALL(json__c9, json__element);
 	CALL(json__c10, json__padding);
 	if (json->ch == ',') {
-		NEXTCH();
+		json__getc(json);
 		CALL(json__c11, json__padding);
 		if (json->ch == '}') JMP(json__error);
 		JMP(json__object_l1);
@@ -434,13 +420,13 @@ jp: switch(json->lc) {
 	LABEL(json__object_l2);
 	TOK(json__t4, JSON_END_OBJECT);
 	json->level--;
-	if (json->level > 0) NEXTCH();
+	if (json->level > 0) json__getc(json);
 	RET();
 
 	LABEL(json__number); {
 		uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		for (;;) {
-			NEXTCH();
+			json__getc(json);
 			if (json->ch >= '0' && json->ch <= '9') {
 				ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 			}
@@ -451,7 +437,7 @@ jp: switch(json->lc) {
 			json->number_type = JSON__NUMBER_DOUBLE;
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 			for (;;) {
-				NEXTCH();
+				json__getc(json);
 				if (json->ch >= '0' && json->ch <= '9') {
 					ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 				}
@@ -461,13 +447,13 @@ jp: switch(json->lc) {
 		if (json->ch == 'e' || json->ch == 'E') {
 			json->number_type = JSON__NUMBER_DOUBLE;
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
-			NEXTCH();
+			json__getc(json);
 			if (json->ch == '+' || json->ch == '-' || (json->ch >= '0' && json->ch <= '9')) {
 				ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 			}
 			else JMP(json__error);
 			for (;;) {
-				NEXTCH();
+				json__getc(json);
 				if (json->ch >= '0' && json->ch <= '9') {
 					ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 				}
@@ -477,7 +463,7 @@ jp: switch(json->lc) {
 		LABEL(json__number_l2);
 		{
 			uint8_t n = '\0';
-			uint8_t postfix; 
+			uint8_t postfix;
 			json__push(json, &n, sizeof(uint8_t));
 			int len = json->sc - json->ra;
 			json__push(json, &len, sizeof(int));
@@ -502,7 +488,7 @@ jp: switch(json->lc) {
 	} RET();
 
 	LABEL(json__array);
-	NEXTCH();
+	if (!json__getc(json)) JMP(json__error);
 	if (json->level > MAX_NESTING_LEVEL) JMP(json__error);
 	TOK(json__t9, JSON_START_ARRAY);
 	CALL(json__c13, json__padding);
@@ -511,7 +497,7 @@ jp: switch(json->lc) {
 	CALL(json__c14, json__element);
 	CALL(json__c15, json__padding);
 	if (json->ch == ',') {
-		NEXTCH();
+		json__getc(json);
 		CALL(json__c17, json__padding);
 		if (json->ch == ']') JMP(json__error);
 		JMP(json__array_l1);
@@ -520,7 +506,7 @@ jp: switch(json->lc) {
 		LABEL(json__array_l2);
 		TOK(json__t11, JSON_END_ARRAY);
 		json->level--;
-		if (json->level > 0) NEXTCH();
+		if (json->level > 0) json__getc(json);
 	}
 	else JMP(json__error);
 	RET();
@@ -528,11 +514,11 @@ jp: switch(json->lc) {
 	LABEL(json__string); {
 		enum json__label lc = (*(enum json__label*)json__pop(json, sizeof(enum json__label)));
 		for (;;) {
-			NEXTCH();
+			json__getc(json);
 			if (json->ch == '\"') break;
 			else if (json->ch < 0x20 || json->ch > 0x10FFFF) JMP(json__error);
 			else if (json->ch == '\\') {
-				NEXTCH();
+				json__getc(json);
 				uint8_t ch;
 				switch (json->ch) {
 				case '"': ch = '\"';  json__push(json, &ch, sizeof(uint8_t)); break;
@@ -546,7 +532,7 @@ jp: switch(json->lc) {
 				case 'u': {
 					int hex[4];
 					for (int i = 0; i < 4; i++) {
-						NEXTCH();
+						json__getc(json);
 						if (!((json->ch >= '0' && json->ch <= '9') || (json->ch >= 'a' && json->ch <= 'f') || (json->ch >= 'A' && json->ch <= 'F'))) {
 							JMP(json__error);
 						}
@@ -562,7 +548,7 @@ jp: switch(json->lc) {
 			}
 		}
 		json__push(json, &lc, sizeof(enum xml__label));
-		NEXTCH();
+		json__getc(json);
 	}
 	RET();
 
@@ -572,7 +558,7 @@ jp: switch(json->lc) {
 		uint8_t n = '\0';
 		uint8_t pf = 'b';
 		for (int i = 0; i < 3; i++) {
-			NEXTCH();
+			if (!json__getc(json)) JMP(json__error);
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		}
 		json__push(json, &n, sizeof(uint8_t));
@@ -581,7 +567,7 @@ jp: switch(json->lc) {
 		if (json__strncmp("true", json__peek_str(json), 4) == 0) {
 			TOK(json__t12, JSON_BOOLEAN);
 			json__pop_str(json);
-			NEXTCH();
+			json__getc(json);
 		}
 		else JMP(json__error);
 	} RET();
@@ -592,7 +578,7 @@ jp: switch(json->lc) {
 		uint8_t pf = 'b';
 		uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		for (int i = 0; i < 4; i++) {
-			NEXTCH();
+			if (!json__getc(json)) JMP(json__error);
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		}
 		json__push(json, &n, sizeof(uint8_t));
@@ -601,7 +587,7 @@ jp: switch(json->lc) {
 		if (json__strncmp("false", json__peek_str(json), 5) == 0) {
 			TOK(json__t13, JSON_BOOLEAN);
 			json__pop_str(json);
-			NEXTCH();
+			json__getc(json);
 		}
 		else JMP(json__error);
 	} RET();
@@ -612,7 +598,7 @@ jp: switch(json->lc) {
 	uint8_t pf = 'z';
 	uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 	for (int i = 0; i < 3; i++) {
-		NEXTCH();
+		if (!json__getc(json)) JMP(json__error);
 		ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 	}
 	json__push(json, &n, sizeof(uint8_t));
@@ -621,7 +607,7 @@ jp: switch(json->lc) {
 	if (json__strncmp("null", json__peek_str(json), 4) == 0) {
 		TOK(json__t14, JSON_NULL);
 		json__pop_str(json);
-		NEXTCH();
+		json__getc(json);
 	}
 	else JMP(json__error);
 	RET();
@@ -631,20 +617,34 @@ jp: switch(json->lc) {
 		char buf[32];
 		int sc = json->sc;
 		uint8_t comma = ',';
-		uint8_t prefix = 'e';
-		json__push(json, json__error_prefix, sizeof(json__error_prefix) - 1);
-		const char* rowstr = json__itoa(buf, sizeof(buf), json->row, 10);
-		json__push(json, rowstr, json__strlen(rowstr));
-		json__push(json, &comma, sizeof(uint8_t));
-		const char* colstr = json__itoa(buf, sizeof(buf), json->col, 10);
-		json__push(json, colstr, json__strlen(colstr));
-		json__push(json, json__unexpected_sign, sizeof(json__unexpected_sign));
-		int len = (int)(json->sc - sc);
-		json__push(json, &len, sizeof(int));
-		json__push(json, &prefix, sizeof(uint8_t));
-	}
-	for (;;) TOK(json__error_loop, JSON_ERROR);
-	}
+		uint8_t pf = 'e';
+		if (feof(json->fp)) {
+			json__push(json, json__error_unexpected_end_of_file, sizeof(json__error_unexpected_end_of_file));
+			int len = (int)sizeof(json__error_unexpected_end_of_file);
+			json__push(json, &len, sizeof(int));
+			json__push(json, &pf, sizeof(uint8_t));
+		}
+		else if (ferror(json->fp)) {
+			size_t sc = json->sc;
+			json__push(json, json__error_while_reading_file, sizeof(json__error_while_reading_file));
+			int len = (int)sizeof(json__error_while_reading_file);
+			json__push(json, &len, sizeof(int));
+			json__push(json, &pf, sizeof(uint8_t));
+		}
+		else {
+			json__push(json, json__error_prefix, sizeof(json__error_prefix) - 1);
+			const char* rowstr = json__itoa(buf, sizeof(buf), json->row, 10);
+			json__push(json, rowstr, json__strlen(rowstr));
+			json__push(json, &comma, sizeof(uint8_t));
+			const char* colstr = json__itoa(buf, sizeof(buf), json->col, 10);
+			json__push(json, colstr, json__strlen(colstr));
+			json__push(json, json__unexpected_sign, sizeof(json__unexpected_sign));
+			int len = (int)(json->sc - sc);
+			json__push(json, &len, sizeof(int));
+			json__push(json, &pf, sizeof(uint8_t));
+		}
+		for (;;) TOK(json__error_loop, JSON_ERROR);
+	}}
 	return JSON_ERROR;
 }
 
@@ -688,7 +688,6 @@ void json_close(json_t* json)
 #undef CALL
 #undef RET
 #undef TOK
-#undef NEXTCH
 #undef JSON_PARSER_IMPLEMENTATION
 
 #endif;

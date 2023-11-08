@@ -1,1 +1,10 @@
-true
+{
+	"ctype": [{
+		"id": "string",
+		"var": [
+			"
+		]	
+	}],
+	"entity": [
+	]
+}

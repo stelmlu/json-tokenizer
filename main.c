@@ -75,7 +75,7 @@ int main(void)
 {
 	// Test the pass files
 	for (int i = 0; i < sizeof(passes) / sizeof(const char*); i++) {
-		printf("test: %s: ", passes[i]);
+		printf("%s: ", passes[i]);
 		int result = check_json_file(passes[i]);
 		if (result == -1) {
 			printf("failed open file!\n");
@@ -84,13 +84,13 @@ int main(void)
 			printf("ok\n");
 		}
 		else {
-			printf("test failed!");
+			printf("failed!\n");
 		}
 	}
 
 	// Test the fail files
 	for (int i = 0; i < sizeof(failes) / sizeof(const char*); i++) {
-		printf("test: %s: ", failes[i]);
+		printf("%s: ", failes[i]);
 		int result = check_json_file(failes[i]);
 		if (result == -1) {
 			printf("open file!\n");
