@@ -3,11 +3,13 @@
 
 // TODO
 // ----
-//
-// + Test with JsonChecker
 // + Suppoert  RFC7159 (can start with a object, array, number, boolean or null, change NEXTCH to int json__getc(int* out)
 // + Add the get int64, uint64, double and boolean functions.
 // + Add document to the header
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 #define JSON_TOKENIZER_IMPLEMENTATION
 #include "json-tokenizer.h"
@@ -54,9 +56,26 @@ const char* failes[] = {
 	"JsonChecker\\fail33.json"
 };
 
-int check_json_file(const char* filename)
+void replace_backslash(char* path) {
+	if(path == NULL) return;
+
+	for (char* p = path; *p != '\0'; ++p) {
+        if (*p == '\\') {
+            *p = '/';
+        }
+    }
+}
+
+int check_json_file(const char* path)
 {
-	json_t* sample = json_fopen(filename);
+	char* path_copy = (char*)malloc(strlen(path) + 1);
+	strcpy(path_copy, path);
+
+	#if defined(__APPLE__) || defined(__linux__)
+	replace_backslash(path_copy);
+	#endif
+
+	json_t* sample = json_fopen(path_copy);
 	if (sample == NULL) return -1;
 
 	json_token_t tok = json_next_token(sample);
@@ -93,7 +112,7 @@ int main(void)
 		printf("%s: ", failes[i]);
 		int result = check_json_file(failes[i]);
 		if (result == -1) {
-			printf("open file!\n");
+			printf("failed open file!\n");
 		}
 		else if (result == 0) {
 			printf("ok\n");

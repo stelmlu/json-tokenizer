@@ -1,6 +1,11 @@
 #ifndef __JSON_TOKENIZER_H__
 #define __JSON_TOKENIZER_H__
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#include <stdio.h>
 #include <stdint.h>
 #include <math.h>
 
@@ -110,7 +115,7 @@ const char* json_get_error(json_t* json);
 #ifdef _MSC_VER
 #define JSON_FOPEN(fp,filename,mode) fopen_s(&(fp),filename,mode)
 #else
-#define JSON_FOPEN(fp,filename,mode) (((fp=fopen(filename,mode))==NULL)?(feof(fp)||ferror(fp)):(0))
+#define JSON_FOPEN(fp,filename,mode) (((fp=fopen(filename,mode))==NULL)?(-1):(-(feof(fp)||ferror(fp))))
 #endif
 #define JSON_FGETC(fp) fgetc(fp)
 #define JSON_FCLOSE(fp) fclose(fp)
@@ -313,6 +318,9 @@ json_t* json_fopen(const char* filename)
 
 json_token_t json_next_token(json_t* json)
 {
+	int sc, len;
+	uint8_t ch, n, postfix, pf, comma;
+	char buf[32];
 jp: switch (json->lc) {
 	LABEL(json__start);
 	if (!json__getc(json)) JMP(json__error);
@@ -338,12 +346,12 @@ jp: switch (json->lc) {
 
 	LABEL(json__element);
 	if (json->ch == '\"') {
-		int sc = json->sc;
-		uint8_t n = '\0';
-		uint8_t postfix = 's';
+		sc = json->sc;
+		n = '\0';
+		postfix = 's';
 		CALL(json__c12, json__string);
 		json__push(json, &n, sizeof(uint8_t));
-		int len = json->sc - sc;
+		len = json->sc - sc;
 		json__push(json, &len, sizeof(int));
 		json__push(json, &postfix, sizeof(uint8_t));
 		TOK(json__t5, JSON_STRING);
@@ -393,12 +401,12 @@ jp: switch (json->lc) {
 	default: JMP(json__error);
 	}
 	{
-		int sc = json->sc;
-		uint8_t n = '\0';
-		uint8_t postfix = 'n';
+		sc = json->sc;
+		n = '\0';
+		postfix = 'n';
 		CALL(json__c6, json__string);
 		json__push(json, &n, sizeof(uint8_t));
-		int len = json->sc - sc;
+		len = json->sc - sc;
 		json__push(json, &len, sizeof(int));
 		json__push(json, &postfix, sizeof(uint8_t));
 		TOK(json__t3, JSON_NAME);
@@ -424,7 +432,7 @@ jp: switch (json->lc) {
 	RET();
 
 	LABEL(json__number); {
-		uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
+		ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		for (;;) {
 			json__getc(json);
 			if (json->ch >= '0' && json->ch <= '9') {
@@ -462,10 +470,9 @@ jp: switch (json->lc) {
 		}
 		LABEL(json__number_l2);
 		{
-			uint8_t n = '\0';
-			uint8_t postfix;
+			n = '\0';
 			json__push(json, &n, sizeof(uint8_t));
-			int len = json->sc - json->ra;
+			len = json->sc - json->ra;
 			json__push(json, &len, sizeof(int));
 			if (json->number_type == JSON__NUMBER_UINT64) {
 				postfix = 'u';
@@ -547,16 +554,16 @@ jp: switch (json->lc) {
 				uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 			}
 		}
-		json__push(json, &lc, sizeof(enum xml__label));
+		json__push(json, &lc, sizeof(enum json__label));
 		json__getc(json);
 	}
 	RET();
 
 	LABEL(json__true); {
-		int len = 5;
-		uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
-		uint8_t n = '\0';
-		uint8_t pf = 'b';
+		len = 5;
+		ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
+		n = '\0';
+		pf = 'b';
 		for (int i = 0; i < 3; i++) {
 			if (!json__getc(json)) JMP(json__error);
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
@@ -573,10 +580,10 @@ jp: switch (json->lc) {
 	} RET();
 
 	LABEL(json__false); {
-		int len = 6;
-		uint8_t n = '\0';
-		uint8_t pf = 'b';
-		uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
+		len = 6;
+		n = '\0';
+		pf = 'b';
+		ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 		for (int i = 0; i < 4; i++) {
 			if (!json__getc(json)) JMP(json__error);
 			ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
@@ -593,10 +600,10 @@ jp: switch (json->lc) {
 	} RET();
 
 	LABEL(json__null);
-	int len = 5;
-	uint8_t n = '\0';
-	uint8_t pf = 'z';
-	uint8_t ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
+	len = 5;
+	n = '\0';
+	pf = 'z';
+	ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
 	for (int i = 0; i < 3; i++) {
 		if (!json__getc(json)) JMP(json__error);
 		ch = json->ch; json__push(json, &ch, sizeof(uint8_t));
@@ -614,10 +621,9 @@ jp: switch (json->lc) {
 
 	LABEL(json__error);
 	{
-		char buf[32];
-		int sc = json->sc;
-		uint8_t comma = ',';
-		uint8_t pf = 'e';
+		sc = json->sc;
+		comma = ',';
+		pf = 'e';
 		if (feof(json->fp)) {
 			json__push(json, json__error_unexpected_end_of_file, sizeof(json__error_unexpected_end_of_file));
 			int len = (int)sizeof(json__error_unexpected_end_of_file);
@@ -644,7 +650,9 @@ jp: switch (json->lc) {
 			json__push(json, &pf, sizeof(uint8_t));
 		}
 		for (;;) TOK(json__error_loop, JSON_ERROR);
-	}}
+	}
+	default: break;
+	}
 	return JSON_ERROR;
 }
 
@@ -690,5 +698,8 @@ void json_close(json_t* json)
 #undef TOK
 #undef JSON_PARSER_IMPLEMENTATION
 
-#endif;
-#endif;
+#endif
+#ifdef __cplusplus
+}
+#endif
+#endif
