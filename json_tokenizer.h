@@ -1,13 +1,56 @@
+/* json_tokenizer.h - public domain data structures - Stefan Elmlund 2024
+*
+*  This is a single-header-file [STB-style](https://github.com/nothings/stb/blob/master/docs/stb_howto.txt)
+*  library for tokenize json file in C (also works in C++)
+* 
+*  The easiest way to install the library to your C/C++ project is to copy 'n' paste the json_tokenizer.h
+*  to your project and do this in *one* C or C++ file:
+*
+*    #define JSON_TOKENIZER_IMPLEMENTATION
+*    #include "json_tokenizer.h"
+*
+*  COMPILE-TIME OPTIONS
+*
+*    These defines only need to be set in the file containing JSON_TOKENIZER_IMPLEMENTATION
+*
+*    #define JSON_REALLOC(context,ptr,size) better_realloc
+*    #define JSON_FREE(context,ptr)         better_free
+*
+*      By default the stdlib realloc() and free() is used. You can defines your own by
+*      defining these symbols. You must either define both, or neither.
+*
+*      Note that at the moment, 'context' will always be NULL.
+*
+*    #define JSON_FOPEN(fp,filename,mode) better_fopen
+*    #define JSON_FGETC(fp)               better_fgetc
+*    #define JSON_FCLOSE(fp)              better_fclose
+*
+*      By default the stdlib fopen(), fgetc() and free() is used. You can defines you own
+*      by defining these symbols. You most either define all three, or neither
+*
+*  LICENSE
+* 
+*    Placed in the public domain and also MIT licensed.
+*    See end of file for detailed license information.
+*  
+*  EXAMPLE
+*
+*    You can find examples how to parser a sample json file that contains a person data using C and C++ (C++11).
+*
+*      main.cpp
+*/
+
 #ifndef __JSON_TOKENIZER_H__
 #define __JSON_TOKENIZER_H__
 
 #ifdef __cplusplus
 extern "C" {
-#endif
-
+#include <cstdio>
+#include <cstdint>
+#else
 #include <stdio.h>
 #include <stdint.h>
-#include <math.h>
+#endif
 
 typedef struct json__impl json_t;
 
@@ -55,33 +98,7 @@ const char* json_get_name(json_t* json);
 *   @param json Pointer to a json structure.
 *   @return A string to a string if applicable else NULL.
 */
-const char* json_get_string(json_t* json);
-
-/** @brief Get a int64 value, can only be read after JSON_INT64 token.
-*   @param json Pointer to a json structure.
-*   @param out Fill the value to the pointer to a int64_t* if the token was a JSON_INT64.
-*   @return A value > 0 if the token was a JSON_INT64 else 0.
-*/
-int json_get_int64(json_t* json, int64_t* out);
-
-/** @brief Get a uint64 value, can only be read after a JSON_UINT64 token.
-*   @param json Pointer to a json structure.
-*   @param out Fill the value to the pointer to a uint64_t* if the token was a JSON_UINT64.
-*   @return A value > 0 if the token was a JSON_UINT64 else 0.
-*/
-int json_get_uint64(json_t* json, uint64_t* out);
-
-/** @brief Get a double value, can only be read after a JSON_DOUBLE token.
-*   @param out Fill the value to the pointer to a double* if the token was a JSON_DOUBLE.
-*   @return A value > 0 if the token was a JSON_double else 0.
-*/
-int json_get_double(json_t* json, double* out);
-
-/** @brief Get a boolean value, can only be read after JSON_BOOLEAN token.
-*   @param out Fill the value to the pointer to a int that is >= if TRUE else FALSE if the token was a JSON_DOUBLE.
-*   @return A value > 0 if the token was a JSON_boolean else 0.
-*/
-int json_get_boolean(json_t* json, int* out);
+const char* json_get_value(json_t* json);
 
 /** @brief Get a error message, can only be read after a JSON_STRING token.
 *   @return A string with the error i applicable else NULL.
@@ -672,7 +689,7 @@ const char* json_get_name(json_t* json) {
 	return NULL;
 }
 
-const char* json_get_string(json_t* json) {
+const char* json_get_value(json_t* json) {
 	uint8_t t = json->stack[json->sc - sizeof(uint8_t)];
 	if (t == 's' || t == 'u' || t == 'i' || t == 'd' || t == 'b' || t == 'z') {
 		int cnt = *(int*)json__peek(json, sizeof(int), sizeof(uint8_t));
@@ -703,3 +720,45 @@ void json_close(json_t* json)
 }
 #endif
 #endif
+
+/*
+------------------------------------------------------------------------------
+This software is available under 2 licenses -- choose whichever you prefer.
+------------------------------------------------------------------------------
+ALTERNATIVE A - MIT License
+Copyright (c) 2024 Stefan Elmlund
+Permission is hereby granted, free of charge, to any person obtaining a copy of
+this software and associated documentation files (the "Software"), to deal in
+the Software without restriction, including without limitation the rights to
+use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
+of the Software, and to permit persons to whom the Software is furnished to do
+so, subject to the following conditions:
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+------------------------------------------------------------------------------
+ALTERNATIVE B - Public Domain (www.unlicense.org)
+This is free and unencumbered software released into the public domain.
+Anyone is free to copy, modify, publish, use, compile, sell, or distribute this
+software, either in source code form or as a compiled binary, for any purpose,
+commercial or non-commercial, and by any means.
+In jurisdictions that recognize copyright laws, the author or authors of this
+software dedicate any and all copyright interest in the software to the public
+domain. We make this dedication for the benefit of the public at large and to
+the detriment of our heirs and successors. We intend this dedication to be an
+overt act of relinquishment in perpetuity of all present and future rights to
+this software under copyright law.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+------------------------------------------------------------------------------
+*/

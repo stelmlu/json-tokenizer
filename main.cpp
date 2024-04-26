@@ -1,18 +1,9 @@
-#include <stdio.h>
-#include <stdlib.h>
-
-// TODO
-// ----
-// + Suppoert  RFC7159 (can start with a object, array, number, boolean or null, change NEXTCH to int json__getc(int* out)
-// + Add the get int64, uint64, double and boolean functions.
-// + Add document to the header
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <cstdio>
+#include <cstdlib>
+#include <vector>
 
 #define JSON_TOKENIZER_IMPLEMENTATION
-#include "json-tokenizer.h"
+#include "json_tokenizer.h"
 
 const char* passes[] = {
 	"JsonChecker\\pass1.json",
@@ -90,8 +81,22 @@ int check_json_file(const char* path)
 	return 1;
 }
 
+enum class gender_t { MALE, FEMALE };
+
+struct person_t {
+	int age;
+	std::string name;
+	gender_t gender;
+	std::string company;
+	std::string email;
+	std::vector<std::string> tags;
+};
+
 int main(void)
 {
+	//
+	// Test the tokenizer with the sample file from [https://www.json.org/JSON_checker/].
+
 	// Test the pass files
 	for (int i = 0; i < sizeof(passes) / sizeof(const char*); i++) {
 		printf("%s: ", passes[i]);
@@ -120,6 +125,66 @@ int main(void)
 		else {
 			printf("failed!\n");
 		}
+	}
+
+	//
+	// Example: Read from a sample file and put the result in a struct.
+	//
+	
+	json_t* sample = json_fopen("sample.json");
+	if(sample == nullptr) {
+		printf("Failed to open sample.json");
+		exit(-1);
+	}
+	json_token_t tok;
+	std::vector<person_t> persons;
+
+	// Search for the start of the object
+	while((tok = json_next_token(sample)) != JSON_START_ARRAY) {}
+	while(true) {
+		person_t person;
+
+		// If the next token is the end of the array then we are done.
+		if((tok = json_next_token(sample)) == JSON_END_ARRAY) break;
+		
+		// Read age
+		while((tok = json_next_token(sample)) != JSON_NAME) {}
+		while((tok = json_next_token(sample)) != JSON_UINT64) {}
+		person.age = static_cast<int>(std::atol(json_get_value(sample)));
+
+		// Read name
+		while((tok = json_next_token(sample)) != JSON_NAME) {}
+		while((tok = json_next_token(sample)) != JSON_STRING) {}
+		person.name = json_get_value(sample);
+
+		// Read gender
+		while((tok = json_next_token(sample)) != JSON_NAME) {}
+		while((tok = json_next_token(sample)) != JSON_STRING) {}
+		person.gender = strcmp(json_get_value(sample), "male") ? gender_t::MALE : gender_t::FEMALE;
+
+		// Read company
+		while((tok = json_next_token(sample)) != JSON_NAME) {}
+		while((tok = json_next_token(sample)) != JSON_STRING) {}
+		person.company = json_get_value(sample);
+
+		// Read email
+		while((tok = json_next_token(sample)) != JSON_NAME) {}
+		while((tok = json_next_token(sample)) != JSON_STRING) {}
+		person.email = json_get_value(sample);
+
+		// Read the tags
+		while((tok = json_next_token(sample)) != JSON_START_ARRAY) {}
+		while(true) {
+			if((tok = json_next_token(sample)) == JSON_END_ARRAY) break;;
+			person.tags.push_back(json_get_value(sample));
+		}
+
+		// skip favoriteFruit
+
+		// Search for the end of the object
+		while((tok = json_next_token(sample)) != JSON_END_OBJECT) {}
+
+		persons.push_back(person);
 	}
 	return 0;
 }

@@ -6,7 +6,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 99)
 
 # Add executable
-add_executable(${PROJECT_NAME} main.c)
+add_executable(${PROJECT_NAME} main.cpp)
 
 # Copy JsonChecker directory to the build directory
 file(COPY ${CMAKE_SOURCE_DIR}/JsonChecker DESTINATION ${CMAKE_BINARY_DIR})
+configure_file(${CMAKE_SOURCE_DIR}/sample.json ${CMAKE_BINARY_DIR}/sample.json COPYONLY)

@@ -1,10 +1,105 @@
-{
-	"ctype": [{
-		"id": "string",
-		"var": [
-			"
-		]	
-	}],
-	"entity": [
-	]
-}
+[
+	{
+	  "age": 20,
+	  "name": "Santos Gardner",
+	  "gender": "male",
+	  "company": "METROZ",
+	  "email": "santosgardner@metroz.com",
+	  "tags": [
+		"deserunt",
+		"dolor",
+		"fugiat",
+		"veniam",
+		"consequat",
+		"officia",
+		"amet"
+	  ],
+	  "favoriteFruit": "banana"
+	},
+	{
+	  "age": 37,
+	  "name": "Mcdaniel Leblanc",
+	  "gender": "male",
+	  "company": "CYTRAK",
+	  "email": "mcdanielleblanc@cytrak.com",
+	  "tags": [
+		"aliqua",
+		"ea",
+		"ipsum",
+		"consequat",
+		"nisi",
+		"non",
+		"esse"
+	  ],
+	  "favoriteFruit": "strawberry"
+	},
+	{
+	  "age": 37,
+	  "name": "Eleanor Lopez",
+	  "gender": "female",
+	  "company": "PODUNK",
+	  "email": "eleanorlopez@podunk.com",
+	  "tags": [
+		"aliqua",
+		"officia",
+		"tempor",
+		"minim",
+		"consequat",
+		"mollit",
+		"nisi"
+	  ],
+	  "favoriteFruit": "strawberry"
+	},
+	{
+	  "age": 38,
+	  "name": "Sutton Joyce",
+	  "gender": "male",
+	  "company": "TALKOLA",
+	  "email": "suttonjoyce@talkola.com",
+	  "tags": [
+		"velit",
+		"et",
+		"reprehenderit",
+		"incididunt",
+		"amet",
+		"qui",
+		"sint"
+	  ],
+	  "favoriteFruit": "strawberry"
+	},
+	{
+	  "age": 33,
+	  "name": "Cathryn Cross",
+	  "gender": "female",
+	  "company": "PETICULAR",
+	  "email": "cathryncross@peticular.com",
+	  "tags": [
+		"id",
+		"irure",
+		"ea",
+		"ut",
+		"reprehenderit",
+		"fugiat",
+		"deserunt"
+	  ],
+	  "favoriteFruit": "banana"
+	},
+	{
+	  "age": 40,
+	  "name": "Louise Green",
+	  "gender": "female",
+	  "company": "OVOLO",
+	  "email": "louisegreen@ovolo.com",
+	  "tags": [
+		"id",
+		"ut",
+		"exercitation",
+		"ex",
+		"nisi",
+		"culpa",
+		"fugiat"
+	  ],
+	  "favoriteFruit": "banana"
+	}
+  ]
+  
